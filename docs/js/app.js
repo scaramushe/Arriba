@@ -41,8 +41,8 @@
         }
     };
 
-    // API helper with CORS proxy fallback
-    async function apiRequest(url, options = {}) {
+    // API helper with CORS proxy
+    async function apiRequest(url, options = {}, useProxy = true) {
         const defaultOptions = {
             headers: {
                 'Content-Type': 'application/json',
@@ -56,27 +56,29 @@
             headers: { ...defaultOptions.headers, ...options.headers }
         };
 
-        // Try direct request first
-        try {
-            const response = await fetch(url, mergedOptions);
-            return response;
-        } catch (error) {
-            // If CORS error, try with proxy
-            if (error.name === 'TypeError') {
-                console.log('Direct request failed, trying CORS proxy...');
-                const proxyUrl = CONFIG.CORS_PROXY + encodeURIComponent(url);
-                return fetch(proxyUrl, mergedOptions);
-            }
-            throw error;
-        }
+        // Use CORS proxy
+        const finalUrl = useProxy ? CONFIG.CORS_PROXY + encodeURIComponent(url) : url;
+
+        console.log('Request to:', finalUrl);
+        console.log('Options:', JSON.stringify(mergedOptions, null, 2));
+
+        return fetch(finalUrl, mergedOptions);
     }
 
     // Auth API
     const Auth = {
         async login(email, password) {
+            // Try JSON format first
             const response = await apiRequest(`${CONFIG.AUTH_URL}/aio/api/v1/mfa/validate/full`, {
                 method: 'POST',
-                body: JSON.stringify({ username: email, password: password })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: email,
+                    password: password
+                })
             });
 
             if (!response.ok) {
