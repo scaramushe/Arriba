@@ -25,6 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize app
     init();
 
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     function init() {
         // Load version info
         loadVersion();
@@ -325,12 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const status = radio.enabled ? radio.status : 'Disabled';
         element.textContent = status;
         element.className = `radio-status ${status.toLowerCase()}`;
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
     // Expose loadSites globally for retry button

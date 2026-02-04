@@ -34,6 +34,7 @@ public class InMemoryLogCollector : ILogCollector
 
     public IEnumerable<LogEntry> GetRecentLogs(int count = 100)
     {
-        return _logs.TakeLast(Math.Min(count, _logs.Count));
+        var snapshot = _logs.ToArray();
+        return snapshot.TakeLast(Math.Min(count, snapshot.Length));
     }
 }
