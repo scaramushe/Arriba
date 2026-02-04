@@ -84,14 +84,17 @@ public class ArubaService : IArubaService
             return siteResponse;
         }
 
-        var devicesWithRadios = new List<Device>();
-        foreach (var device in devicesResponse.Data ?? new List<Device>())
+        // Fetch radios for all devices in parallel to avoid N+1 query issue
+        var devices = devicesResponse.Data ?? new List<Device>();
+        var radioTasks = devices.Select(async device =>
         {
             var radiosResponse = await _apiClient.GetRadiosAsync(tokens.AccessToken, siteId, device.Id, cancellationToken);
-            devicesWithRadios.Add(device with { Radios = radiosResponse.Data ?? new List<Radio>() });
-        }
+            return device with { Radios = radiosResponse.Data ?? new List<Radio>() };
+        });
 
-        var siteWithDevices = siteResponse.Data with { Devices = devicesWithRadios };
+        var devicesWithRadios = await Task.WhenAll(radioTasks);
+
+        var siteWithDevices = siteResponse.Data with { Devices = devicesWithRadios.ToList() };
         return ApiResponse<Site>.Ok(siteWithDevices);
     }
 
