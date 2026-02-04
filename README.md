@@ -32,6 +32,26 @@ Arriba/
 
 ## Getting Started
 
+### Development Mode with Mock Credentials
+
+For development and testing without real Aruba credentials, the application can use a mock API client:
+
+1. Set the environment to Development (this is the default):
+   ```bash
+   export ASPNETCORE_ENVIRONMENT=Development
+   ```
+
+2. The mock client is automatically enabled via `appsettings.Development.json`
+
+3. Use these fake credentials to login:
+   - **Email**: `test@example.com`
+   - **Password**: `password`
+
+4. The mock client provides:
+   - Fast authentication without network delays
+   - Sample site, device, and radio data for testing
+   - Full API functionality for development
+
 ### Running Locally
 
 1. Clone the repository:
@@ -51,6 +71,9 @@ Arriba/
    ```
 
 4. Open your browser and navigate to `https://localhost:5001` or `http://localhost:5000`
+
+5. **For Development**: Login with `test@example.com` / `password`
+   **For Production**: Use your real Aruba Instant On credentials
 
 ### Running Tests
 
@@ -112,6 +135,18 @@ The application uses the following configuration in `appsettings.json`:
   }
 }
 ```
+
+For development, `appsettings.Development.json` enables the mock API client:
+
+```json
+{
+  "Aruba": {
+    "UseMockClient": true
+  }
+}
+```
+
+Set `UseMockClient` to `false` or remove it to use the real Aruba API in development.
 
 ## Security Considerations
 
