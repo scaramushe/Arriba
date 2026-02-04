@@ -71,6 +71,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
 // Fallback to index.html for SPA routing
 app.MapFallbackToFile("index.html");
 

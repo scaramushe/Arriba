@@ -27,15 +27,11 @@ USER appuser
 # Copy published application
 COPY --from=build /app/publish .
 
-# Expose port
-EXPOSE 8080
+# Expose port (Render uses PORT env var, default 10000)
+EXPOSE 10000
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
-
-ENTRYPOINT ["dotnet", "Arriba.Web.dll"]
+# Use shell form to allow PORT environment variable substitution
+CMD ASPNETCORE_URLS=http://+:${PORT:-10000} dotnet Arriba.Web.dll
