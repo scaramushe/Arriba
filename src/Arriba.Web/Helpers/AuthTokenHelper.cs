@@ -27,8 +27,9 @@ public static class AuthTokenHelper
         {
             AccessToken = accessToken,
             RefreshToken = string.Empty,
-            // Token expiry should be managed by the client or extracted from the JWT
-            // Setting a far future date since we don't have the actual expiry here
+            // Note: Token expiry should be managed by the client or extracted from the JWT.
+            // We set a far future date here because we don't decode the JWT on the server.
+            // Actual token validation is performed by the Aruba API when we make requests.
             ExpiresAt = DateTime.UtcNow.AddYears(1)
         };
     }
