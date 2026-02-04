@@ -41,6 +41,13 @@
         }
     };
 
+    // Debug logger
+    const log = {
+        info: (...args) => console.log('[Arriba]', ...args),
+        error: (...args) => console.error('[Arriba ERROR]', ...args),
+        debug: (...args) => console.log('[Arriba DEBUG]', ...args),
+    };
+
     // API helper with CORS proxy
     async function apiRequest(url, options = {}, useProxy = true) {
         const defaultOptions = {
@@ -59,36 +66,69 @@
         // Use CORS proxy
         const finalUrl = useProxy ? CONFIG.CORS_PROXY + encodeURIComponent(url) : url;
 
-        console.log('Request to:', finalUrl);
-        console.log('Options:', JSON.stringify(mergedOptions, null, 2));
+        log.info('=== API Request ===');
+        log.info('Original URL:', url);
+        log.info('Proxy URL:', finalUrl);
+        log.info('Method:', mergedOptions.method || 'GET');
+        log.info('Headers:', JSON.stringify(mergedOptions.headers, null, 2));
+        log.info('Body:', mergedOptions.body);
 
-        return fetch(finalUrl, mergedOptions);
+        try {
+            const response = await fetch(finalUrl, mergedOptions);
+            log.info('Response status:', response.status, response.statusText);
+            log.info('Response headers:', JSON.stringify([...response.headers.entries()], null, 2));
+            return response;
+        } catch (error) {
+            log.error('Fetch error:', error.message);
+            throw error;
+        }
     }
 
     // Auth API
     const Auth = {
         async login(email, password) {
-            // Try JSON format first
+            log.info('=== Login Attempt ===');
+            log.info('Email:', email);
+            log.info('Password length:', password.length);
+
+            const requestBody = {
+                username: email,
+                password: password
+            };
+
+            log.info('Request body object:', JSON.stringify(requestBody, null, 2));
+            log.info('Stringified body:', JSON.stringify(requestBody));
+
             const response = await apiRequest(`${CONFIG.AUTH_URL}/aio/api/v1/mfa/validate/full`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    username: email,
-                    password: password
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            log.info('Login response status:', response.status);
+
+            const responseText = await response.text();
+            log.info('Login response body:', responseText);
+
             if (!response.ok) {
-                const error = await response.text();
-                throw new Error(`Authentication failed: ${error}`);
+                log.error('Login failed:', responseText);
+                throw new Error(`Authentication failed: ${responseText}`);
             }
 
-            const data = await response.json();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+                log.info('Parsed response:', JSON.stringify(data, null, 2));
+            } catch (e) {
+                log.error('Failed to parse response as JSON:', e);
+                throw new Error('Invalid response from server');
+            }
 
             if (!data.access_token) {
+                log.error('No access_token in response');
                 throw new Error('Invalid response from authentication server');
             }
 
@@ -99,6 +139,7 @@
                 email: email
             };
 
+            log.info('Auth successful, storing tokens');
             Storage.set(authData);
             return authData;
         },
