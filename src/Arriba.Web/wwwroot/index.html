@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arriba - Aruba Radio Control</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Section -->
+        <section id="login-section" class="section">
+            <div class="container login-container">
+                <h1>Arriba</h1>
+                <p class="subtitle">Aruba Instant On Portal Wrapper</p>
+
+                <form id="login-form" class="form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required placeholder="Enter your Aruba account email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required placeholder="Enter your password">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="remember-me" checked>
+                            Remember me (cache credentials)
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="login-btn">
+                        <span class="btn-text">Sign In</span>
+                        <span class="btn-loading hidden">Signing in...</span>
+                    </button>
+                    <div id="login-error" class="error-message hidden"></div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="section hidden">
+            <header class="header">
+                <div class="header-content">
+                    <h1>Arriba Dashboard</h1>
+                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Loading access points...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="error-container hidden">
+                    <p id="error-message"></p>
+                    <button class="btn btn-primary" onclick="loadSites()">Retry</button>
+                </div>
+
+                <!-- Sites and Devices -->
+                <div id="sites-container" class="hidden">
+                    <div id="sites-list" class="sites-grid"></div>
+                </div>
+            </main>
+        </section>
+    </div>
+
+    <!-- Device Card Template -->
+    <template id="device-card-template">
+        <div class="device-card">
+            <div class="device-header">
+                <div class="device-info">
+                    <h3 class="device-name"></h3>
+                    <span class="device-model"></span>
+                </div>
+                <span class="device-status"></span>
+            </div>
+            <div class="device-details">
+                <p><strong>MAC:</strong> <span class="device-mac"></span></p>
+                <p><strong>Serial:</strong> <span class="device-serial"></span></p>
+            </div>
+            <div class="radios-container">
+                <h4>Radio Controls</h4>
+                <div class="radios-list"></div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Radio Control Template -->
+    <template id="radio-control-template">
+        <div class="radio-control">
+            <div class="radio-info">
+                <span class="radio-band"></span>
+                <span class="radio-channel"></span>
+                <span class="radio-power"></span>
+            </div>
+            <div class="radio-actions">
+                <label class="toggle-switch">
+                    <input type="checkbox" class="radio-toggle">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="radio-status"></span>
+            </div>
+        </div>
+    </template>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
