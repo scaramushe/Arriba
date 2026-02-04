@@ -11,8 +11,12 @@
         DEFAULT_SITE_ID: 'f7a52cf3-a421-4438-b2a3-be6ca7551265',
         DEFAULT_DEVICE_ID: '20:9c:b4:c5:dd:be',
         STORAGE_KEY: 'arriba_auth',
-        // CORS proxy for browsers that block direct API calls
-        CORS_PROXY: 'https://corsproxy.io/?'
+        // Multiple CORS proxies to try
+        CORS_PROXIES: [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://proxy.cors.sh/'
+        ]
     };
 
     // Storage helper
@@ -48,7 +52,7 @@
         debug: (...args) => console.log('[Arriba DEBUG]', ...args),
     };
 
-    // API helper with CORS proxy
+    // API helper with CORS proxy fallback
     async function apiRequest(url, options = {}, useProxy = true) {
         const defaultOptions = {
             headers: {
@@ -63,25 +67,52 @@
             headers: { ...defaultOptions.headers, ...options.headers }
         };
 
-        // Use CORS proxy
-        const finalUrl = useProxy ? CONFIG.CORS_PROXY + encodeURIComponent(url) : url;
-
         log.info('=== API Request ===');
         log.info('Original URL:', url);
-        log.info('Proxy URL:', finalUrl);
         log.info('Method:', mergedOptions.method || 'GET');
         log.info('Headers:', JSON.stringify(mergedOptions.headers, null, 2));
         log.info('Body:', mergedOptions.body);
 
-        try {
-            const response = await fetch(finalUrl, mergedOptions);
-            log.info('Response status:', response.status, response.statusText);
-            log.info('Response headers:', JSON.stringify([...response.headers.entries()], null, 2));
-            return response;
-        } catch (error) {
-            log.error('Fetch error:', error.message);
-            throw error;
+        // Try direct request first (in case CORS is allowed)
+        if (!useProxy) {
+            try {
+                log.info('Trying direct request...');
+                const response = await fetch(url, mergedOptions);
+                log.info('Direct request succeeded:', response.status);
+                return response;
+            } catch (error) {
+                log.error('Direct request failed:', error.message);
+                throw error;
+            }
         }
+
+        // Try each CORS proxy until one works
+        const errors = [];
+        for (const proxy of CONFIG.CORS_PROXIES) {
+            const proxyUrl = proxy + encodeURIComponent(url);
+            log.info(`Trying proxy: ${proxy}`);
+            log.info(`Full URL: ${proxyUrl}`);
+
+            try {
+                const response = await fetch(proxyUrl, mergedOptions);
+                log.info('Response status:', response.status, response.statusText);
+
+                // Check if proxy returned an error page instead of proxying
+                if (response.ok || response.status === 400 || response.status === 401) {
+                    log.info('Proxy succeeded, returning response');
+                    return response;
+                }
+
+                log.info('Proxy returned error status, trying next...');
+                errors.push(`${proxy}: HTTP ${response.status}`);
+            } catch (error) {
+                log.error(`Proxy ${proxy} failed:`, error.message);
+                errors.push(`${proxy}: ${error.message}`);
+            }
+        }
+
+        // All proxies failed
+        throw new Error(`All CORS proxies failed: ${errors.join(', ')}`);
     }
 
     // Auth API
