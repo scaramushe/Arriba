@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Arriba.Core.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Arriba.Core.Services;
 
@@ -10,13 +11,15 @@ public class ArubaApiClient : IArubaApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<ArubaApiClient> _logger;
 
     private const string BaseUrl = "https://nb.portal.arubainstanton.com/api";
     private const string AuthUrl = "https://sso.arubainstanton.com";
 
-    public ArubaApiClient(HttpClient httpClient)
+    public ArubaApiClient(HttpClient httpClient, ILogger<ArubaApiClient> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -29,6 +32,8 @@ public class ArubaApiClient : IArubaApiClient
     {
         try
         {
+            _logger.LogInformation("Attempting login for user: {Email}", request.Email);
+
             var authRequest = new
             {
                 username = request.Email,
@@ -44,6 +49,8 @@ public class ArubaApiClient : IArubaApiClient
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Login failed for user {Email}: Status {StatusCode}, Error: {Error}", 
+                    request.Email, response.StatusCode, errorContent);
                 return ApiResponse<LoginResponse>.Fail($"Authentication failed: {errorContent}", (int)response.StatusCode);
             }
 
@@ -51,8 +58,11 @@ public class ArubaApiClient : IArubaApiClient
 
             if (result?.AccessToken == null)
             {
+                _logger.LogError("Login failed for user {Email}: Invalid authentication response", request.Email);
                 return ApiResponse<LoginResponse>.Fail("Invalid authentication response", 500);
             }
+
+            _logger.LogInformation("Login successful for user: {Email}", request.Email);
 
             return ApiResponse<LoginResponse>.Ok(new LoginResponse(
                 result.AccessToken,
@@ -63,6 +73,7 @@ public class ArubaApiClient : IArubaApiClient
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Login exception for user {Email}: {Message}", request.Email, ex.Message);
             return ApiResponse<LoginResponse>.Fail($"Login error: {ex.Message}", 500);
         }
     }
@@ -71,6 +82,8 @@ public class ArubaApiClient : IArubaApiClient
     {
         try
         {
+            _logger.LogInformation("Attempting to refresh authentication token");
+
             var refreshRequest = new { refresh_token = refreshToken };
 
             var response = await _httpClient.PostAsJsonAsync(
@@ -81,6 +94,7 @@ public class ArubaApiClient : IArubaApiClient
 
             if (!response.IsSuccessStatusCode)
             {
+                _logger.LogError("Token refresh failed: Status {StatusCode}", response.StatusCode);
                 return ApiResponse<LoginResponse>.Fail("Token refresh failed", (int)response.StatusCode);
             }
 
@@ -88,8 +102,11 @@ public class ArubaApiClient : IArubaApiClient
 
             if (result?.AccessToken == null)
             {
+                _logger.LogError("Token refresh failed: Invalid refresh response");
                 return ApiResponse<LoginResponse>.Fail("Invalid refresh response", 500);
             }
+
+            _logger.LogInformation("Token refresh successful");
 
             return ApiResponse<LoginResponse>.Ok(new LoginResponse(
                 result.AccessToken,
@@ -100,6 +117,7 @@ public class ArubaApiClient : IArubaApiClient
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Token refresh exception: {Message}", ex.Message);
             return ApiResponse<LoginResponse>.Fail($"Refresh error: {ex.Message}", 500);
         }
     }
@@ -135,21 +153,27 @@ public class ArubaApiClient : IArubaApiClient
     {
         try
         {
+            _logger.LogDebug("Fetching sites from Aruba API");
+
             using var request = CreateRequest(HttpMethod.Get, $"{BaseUrl}/sites", accessToken);
             var response = await _httpClient.SendAsync(request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
+                _logger.LogError("Failed to get sites from Aruba API: Status {StatusCode}", response.StatusCode);
                 return ApiResponse<List<Site>>.Fail("Failed to get sites", (int)response.StatusCode);
             }
 
             var result = await response.Content.ReadFromJsonAsync<ArubaSitesResponse>(_jsonOptions, cancellationToken);
             var sites = result?.Elements?.Select(MapToSite).ToList() ?? new List<Site>();
 
+            _logger.LogDebug("Successfully fetched {Count} sites from Aruba API", sites.Count);
+
             return ApiResponse<List<Site>>.Ok(sites);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Exception while fetching sites: {Message}", ex.Message);
             return ApiResponse<List<Site>>.Fail($"Sites error: {ex.Message}", 500);
         }
     }
@@ -185,21 +209,27 @@ public class ArubaApiClient : IArubaApiClient
     {
         try
         {
+            _logger.LogDebug("Fetching devices for site {SiteId} from Aruba API", siteId);
+
             using var request = CreateRequest(HttpMethod.Get, $"{BaseUrl}/sites/{siteId}/devices", accessToken);
             var response = await _httpClient.SendAsync(request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
+                _logger.LogError("Failed to get devices for site {SiteId} from Aruba API: Status {StatusCode}", siteId, response.StatusCode);
                 return ApiResponse<List<Device>>.Fail("Failed to get devices", (int)response.StatusCode);
             }
 
             var result = await response.Content.ReadFromJsonAsync<ArubaDevicesResponse>(_jsonOptions, cancellationToken);
             var devices = result?.Elements?.Select(MapToDevice).ToList() ?? new List<Device>();
 
+            _logger.LogDebug("Successfully fetched {Count} devices for site {SiteId} from Aruba API", devices.Count, siteId);
+
             return ApiResponse<List<Device>>.Ok(devices);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Exception while fetching devices for site {SiteId}: {Message}", siteId, ex.Message);
             return ApiResponse<List<Device>>.Fail($"Devices error: {ex.Message}", 500);
         }
     }

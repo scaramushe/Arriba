@@ -53,15 +53,21 @@ public class AuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
+            _logger.LogWarning("RefreshToken: Invalid request - refresh token is empty");
             return BadRequest(new ApiError("INVALID_REQUEST", "Refresh token is required"));
         }
+
+        _logger.LogInformation("Attempting to refresh authentication token");
 
         var result = await _arubaService.RefreshAuthenticationAsync(request.RefreshToken, cancellationToken);
 
         if (!result.Success || result.Data == null)
         {
+            _logger.LogWarning("Token refresh failed: {Error}", result.Error);
             return Unauthorized(new ApiError("REFRESH_FAILED", result.Error ?? "Token refresh failed"));
         }
+
+        _logger.LogInformation("Token refresh successful");
 
         var response = new
         {

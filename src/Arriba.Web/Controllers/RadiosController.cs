@@ -23,16 +23,20 @@ public class RadiosController : ControllerBase
         var tokens = GetTokensFromHeader();
         if (tokens == null)
         {
+            _logger.LogWarning("GetRadios: Unauthorized - No access token provided for device {DeviceId} on site {SiteId}", deviceId, siteId);
             return Unauthorized(new ApiError("UNAUTHORIZED", "Access token required"));
         }
 
+        _logger.LogInformation("Fetching radios for device {DeviceId} on site {SiteId}", deviceId, siteId);
         var result = await _arubaService.GetDeviceWithRadiosAsync(tokens, siteId, deviceId, cancellationToken);
 
         if (!result.Success || result.Data == null)
         {
+            _logger.LogError("Failed to fetch radios for device {DeviceId} on site {SiteId}: {Error}", deviceId, siteId, result.Error);
             return StatusCode(result.StatusCode, new ApiError("FETCH_FAILED", result.Error ?? "Failed to fetch radios"));
         }
 
+        _logger.LogInformation("Successfully fetched {Count} radios for device {DeviceId}", result.Data.Radios?.Count ?? 0, deviceId);
         return Ok(result.Data.Radios);
     }
 
@@ -42,6 +46,7 @@ public class RadiosController : ControllerBase
         var tokens = GetTokensFromHeader();
         if (tokens == null)
         {
+            _logger.LogWarning("ToggleRadio: Unauthorized - No access token provided");
             return Unauthorized(new ApiError("UNAUTHORIZED", "Access token required"));
         }
 
@@ -51,9 +56,11 @@ public class RadiosController : ControllerBase
 
         if (!result.Success)
         {
+            _logger.LogError("Failed to toggle radio {RadioId} on device {DeviceId}: {Error}", radioId, deviceId, result.Error);
             return StatusCode(result.StatusCode, new ApiError("TOGGLE_FAILED", result.Error ?? "Failed to toggle radio"));
         }
 
+        _logger.LogInformation("Successfully toggled radio {RadioId} to {Enabled}", radioId, request.Enabled);
         return Ok(result.Data);
     }
 
@@ -63,19 +70,23 @@ public class RadiosController : ControllerBase
         var tokens = GetTokensFromHeader();
         if (tokens == null)
         {
+            _logger.LogWarning("UpdateRadio: Unauthorized - No access token provided");
             return Unauthorized(new ApiError("UNAUTHORIZED", "Access token required"));
         }
 
-        _logger.LogInformation("Updating radio {RadioId} on device {DeviceId}", radioId, deviceId);
+        _logger.LogInformation("Updating radio {RadioId} on device {DeviceId} (Enabled: {Enabled}, Channel: {Channel}, Power: {Power})", 
+            radioId, deviceId, request.Enabled, request.Channel, request.TransmitPower);
 
         var controlRequest = new RadioControlRequest(deviceId, radioId, request.Enabled, request.Channel, request.TransmitPower);
         var result = await _arubaService.UpdateRadioAsync(tokens, siteId, controlRequest, cancellationToken);
 
         if (!result.Success)
         {
+            _logger.LogError("Failed to update radio {RadioId} on device {DeviceId}: {Error}", radioId, deviceId, result.Error);
             return StatusCode(result.StatusCode, new ApiError("UPDATE_FAILED", result.Error ?? "Failed to update radio"));
         }
 
+        _logger.LogInformation("Successfully updated radio {RadioId}", radioId);
         return Ok(result.Data);
     }
 
@@ -97,7 +108,9 @@ public class RadiosController : ControllerBase
         {
             AccessToken = accessToken,
             RefreshToken = string.Empty,
-            ExpiresAt = DateTime.UtcNow.AddHours(1)
+            // Token expiry should be managed by the client or extracted from the JWT
+            // Setting a far future date since we don't have the actual expiry here
+            ExpiresAt = DateTime.UtcNow.AddYears(1)
         };
     }
 }

@@ -1,5 +1,9 @@
 using Arriba.Core.Services;
 
+// Cache control constants
+const int OneYearInSeconds = 31536000; // 1 year
+const int OneHourInSeconds = 3600; // 1 hour
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
@@ -26,6 +30,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
+        // WARNING: This CORS policy allows requests from any origin
+        // For production, specify allowed origins explicitly:
+        // policy.WithOrigins("https://yourdomain.com", "https://www.yourdomain.com")
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
@@ -57,12 +64,12 @@ app.UseStaticFiles(new StaticFileOptions
         // Cache static files for 1 year (for versioned assets)
         if (ctx.File.Name.EndsWith(".js") || ctx.File.Name.EndsWith(".css"))
         {
-            ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+            ctx.Context.Response.Headers.CacheControl = $"public, max-age={OneYearInSeconds}, immutable";
         }
         // Cache HTML for 1 hour
         else if (ctx.File.Name.EndsWith(".html"))
         {
-            ctx.Context.Response.Headers.CacheControl = "public, max-age=3600";
+            ctx.Context.Response.Headers.CacheControl = $"public, max-age={OneHourInSeconds}";
         }
     }
 });
