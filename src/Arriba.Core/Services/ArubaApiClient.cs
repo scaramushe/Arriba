@@ -15,6 +15,8 @@ public class ArubaApiClient : IArubaApiClient
 
     private const string BaseUrl = "https://nb.portal.arubainstanton.com/api";
     private const string AuthUrl = "https://sso.arubainstanton.com";
+    private const string LoginEndpoint = "/aio/api/v1/mfa/validate/full";
+    private const string RefreshEndpoint = "/aio/api/v1/refresh";
 
     public ArubaApiClient(HttpClient httpClient, ILogger<ArubaApiClient> logger)
     {
@@ -32,7 +34,7 @@ public class ArubaApiClient : IArubaApiClient
     {
         try
         {
-            _logger.LogInformation("Attempting login for user: {Email}", request.Email);
+            _logger.LogInformation("Attempting login");
 
             var authRequest = new
             {
@@ -40,10 +42,11 @@ public class ArubaApiClient : IArubaApiClient
                 password = request.Password
             };
 
-            _logger.LogDebug("Sending login request to Aruba SSO: {Url}", $"{AuthUrl}/aio/api/v1/mfa/validate/full");
+            var loginUrl = $"{AuthUrl}{LoginEndpoint}";
+            _logger.LogDebug("Sending login request to Aruba SSO");
 
             var response = await _httpClient.PostAsJsonAsync(
-                $"{AuthUrl}/aio/api/v1/mfa/validate/full",
+                loginUrl,
                 authRequest,
                 _jsonOptions,
                 cancellationToken);
@@ -53,8 +56,8 @@ public class ArubaApiClient : IArubaApiClient
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Login failed for user {Email}: Status {StatusCode}, Error: {Error}", 
-                    request.Email, response.StatusCode, errorContent);
+                _logger.LogError("Login failed: Status {StatusCode}, Error: {Error}", 
+                    response.StatusCode, errorContent);
                 return ApiResponse<LoginResponse>.Fail($"Authentication failed: {errorContent}", (int)response.StatusCode);
             }
 
@@ -62,11 +65,11 @@ public class ArubaApiClient : IArubaApiClient
 
             if (result?.AccessToken == null)
             {
-                _logger.LogError("Login failed for user {Email}: Invalid authentication response", request.Email);
+                _logger.LogError("Login failed: Invalid authentication response");
                 return ApiResponse<LoginResponse>.Fail("Invalid authentication response", 500);
             }
 
-            _logger.LogInformation("Login successful for user: {Email}", request.Email);
+            _logger.LogInformation("Login successful");
 
             return ApiResponse<LoginResponse>.Ok(new LoginResponse(
                 result.AccessToken,
@@ -77,17 +80,17 @@ public class ArubaApiClient : IArubaApiClient
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogError(ex, "Login request timed out for user {Email}", request.Email);
+            _logger.LogError(ex, "Login request timed out");
             return ApiResponse<LoginResponse>.Fail("Login request timed out. Please try again.", 408);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Login network error for user {Email}: {Message}", request.Email, ex.Message);
+            _logger.LogError(ex, "Login network error: {Message}", ex.Message);
             return ApiResponse<LoginResponse>.Fail($"Network error: {ex.Message}", 503);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Login exception for user {Email}: {Message}", request.Email, ex.Message);
+            _logger.LogError(ex, "Login exception: {Message}", ex.Message);
             return ApiResponse<LoginResponse>.Fail($"Login error: {ex.Message}", 500);
         }
     }
@@ -99,11 +102,12 @@ public class ArubaApiClient : IArubaApiClient
             _logger.LogInformation("Attempting to refresh authentication token");
 
             var refreshRequest = new { refresh_token = refreshToken };
+            var refreshUrl = $"{AuthUrl}{RefreshEndpoint}";
 
             _logger.LogDebug("Sending token refresh request to Aruba SSO");
 
             var response = await _httpClient.PostAsJsonAsync(
-                $"{AuthUrl}/aio/api/v1/refresh",
+                refreshUrl,
                 refreshRequest,
                 _jsonOptions,
                 cancellationToken);

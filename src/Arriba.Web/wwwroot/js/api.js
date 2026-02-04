@@ -47,7 +47,7 @@ const API = {
 
     // Authentication
     async login(email, password, remember = true) {
-        console.log(`[API] Starting login request for: ${email}`);
+        console.log('[API] Starting login request');
         
         try {
             const response = await fetch(`${this.baseUrl}/auth/login`, {
