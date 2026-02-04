@@ -13,8 +13,10 @@ const Auth = {
             const now = new Date();
             // Consider expired if less than 5 minutes remaining
             if (expiryDate.getTime() - now.getTime() < 5 * 60 * 1000) {
-                // Try to refresh
-                return API.refreshToken();
+                // Token is expiring soon, but don't wait for refresh here
+                // Let the auto-refresh or API request handle it
+                console.log('Token expiring soon, will refresh on next API call');
+                return true;
             }
         }
 

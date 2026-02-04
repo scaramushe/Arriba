@@ -40,11 +40,15 @@ public class ArubaApiClient : IArubaApiClient
                 password = request.Password
             };
 
+            _logger.LogDebug("Sending login request to Aruba SSO: {Url}", $"{AuthUrl}/aio/api/v1/mfa/validate/full");
+
             var response = await _httpClient.PostAsJsonAsync(
                 $"{AuthUrl}/aio/api/v1/mfa/validate/full",
                 authRequest,
                 _jsonOptions,
                 cancellationToken);
+
+            _logger.LogDebug("Received response from Aruba SSO: Status {StatusCode}", response.StatusCode);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -71,6 +75,16 @@ public class ArubaApiClient : IArubaApiClient
                 result.TokenType ?? "Bearer"
             ));
         }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Login request timed out for user {Email}", request.Email);
+            return ApiResponse<LoginResponse>.Fail("Login request timed out. Please try again.", 408);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Login network error for user {Email}: {Message}", request.Email, ex.Message);
+            return ApiResponse<LoginResponse>.Fail($"Network error: {ex.Message}", 503);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Login exception for user {Email}: {Message}", request.Email, ex.Message);
@@ -86,11 +100,15 @@ public class ArubaApiClient : IArubaApiClient
 
             var refreshRequest = new { refresh_token = refreshToken };
 
+            _logger.LogDebug("Sending token refresh request to Aruba SSO");
+
             var response = await _httpClient.PostAsJsonAsync(
                 $"{AuthUrl}/aio/api/v1/refresh",
                 refreshRequest,
                 _jsonOptions,
                 cancellationToken);
+
+            _logger.LogDebug("Received token refresh response: Status {StatusCode}", response.StatusCode);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -114,6 +132,16 @@ public class ArubaApiClient : IArubaApiClient
                 result.ExpiresIn,
                 result.TokenType ?? "Bearer"
             ));
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Token refresh request timed out");
+            return ApiResponse<LoginResponse>.Fail("Token refresh timed out. Please try again.", 408);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Token refresh network error: {Message}", ex.Message);
+            return ApiResponse<LoginResponse>.Fail($"Network error: {ex.Message}", 503);
         }
         catch (Exception ex)
         {

@@ -47,33 +47,48 @@ const API = {
 
     // Authentication
     async login(email, password, remember = true) {
-        const response = await fetch(`${this.baseUrl}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+        console.log(`[API] Starting login request for: ${email}`);
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Login failed' }));
-            throw new Error(error.message || 'Login failed');
+            console.log(`[API] Login response received: ${response.status} ${response.statusText}`);
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ message: 'Login failed' }));
+                console.error(`[API] Login failed: ${error.message || 'Unknown error'}`);
+                throw new Error(error.message || 'Login failed');
+            }
+
+            const data = await response.json();
+            console.log('[API] Login successful, storing tokens');
+
+            // Store tokens based on remember preference
+            const storage = remember ? localStorage : sessionStorage;
+            storage.setItem('arriba_token', data.accessToken);
+            storage.setItem('arriba_refresh_token', data.refreshToken);
+            storage.setItem('arriba_token_expires', data.expiresAt);
+
+            return data;
+        } catch (error) {
+            console.error('[API] Login error:', error);
+            throw error;
         }
-
-        const data = await response.json();
-
-        // Store tokens based on remember preference
-        const storage = remember ? localStorage : sessionStorage;
-        storage.setItem('arriba_token', data.accessToken);
-        storage.setItem('arriba_refresh_token', data.refreshToken);
-        storage.setItem('arriba_token_expires', data.expiresAt);
-
-        return data;
     },
 
     async refreshToken() {
         const refreshToken = this.getRefreshToken();
-        if (!refreshToken) return false;
+        if (!refreshToken) {
+            console.log('[API] No refresh token available');
+            return false;
+        }
 
         try {
+            console.log('[API] Attempting to refresh token');
             const response = await fetch(`${this.baseUrl}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -81,11 +96,13 @@ const API = {
             });
 
             if (!response.ok) {
+                console.error(`[API] Token refresh failed: ${response.status} ${response.statusText}`);
                 this.clearTokens();
                 return false;
             }
 
             const data = await response.json();
+            console.log('[API] Token refresh successful');
 
             // Update stored tokens
             const storage = localStorage.getItem('arriba_token') ? localStorage : sessionStorage;
@@ -94,18 +111,21 @@ const API = {
             storage.setItem('arriba_token_expires', data.expiresAt);
 
             return true;
-        } catch {
+        } catch (error) {
+            console.error('[API] Token refresh error:', error);
             this.clearTokens();
             return false;
         }
     },
 
     logout() {
+        console.log('[API] Logging out');
         this.clearTokens();
         fetch(`${this.baseUrl}/auth/logout`, { method: 'POST' }).catch(() => {});
     },
 
     clearTokens() {
+        console.log('[API] Clearing tokens');
         localStorage.removeItem('arriba_token');
         localStorage.removeItem('arriba_refresh_token');
         localStorage.removeItem('arriba_token_expires');

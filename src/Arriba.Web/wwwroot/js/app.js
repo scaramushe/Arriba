@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = document.getElementById('password').value;
         const remember = document.getElementById('remember-me').checked;
 
+        console.log('[App] Login form submitted');
+
         // Disable button and show loading
         loginBtn.disabled = true;
         loginBtn.querySelector('.btn-text').classList.add('hidden');
@@ -57,13 +59,17 @@ document.addEventListener('DOMContentLoaded', () => {
         loginError.classList.add('hidden');
 
         try {
+            console.log('[App] Calling API.login...');
             await API.login(email, password, remember);
+            console.log('[App] Login successful, showing dashboard');
             showDashboard();
             loadSites();
         } catch (error) {
-            loginError.textContent = error.message;
+            console.error('[App] Login failed:', error);
+            loginError.textContent = error.message || 'Login failed. Please try again.';
             loginError.classList.remove('hidden');
         } finally {
+            console.log('[App] Restoring login button state');
             loginBtn.disabled = false;
             loginBtn.querySelector('.btn-text').classList.remove('hidden');
             loginBtn.querySelector('.btn-loading').classList.add('hidden');
