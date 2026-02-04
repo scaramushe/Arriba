@@ -13,6 +13,7 @@
             <div class="container login-container">
                 <h1>Arriba</h1>
                 <p class="subtitle">Aruba Instant On Portal Wrapper</p>
+                <p class="version-info" id="login-version">Loading version...</p>
 
                 <form id="login-form" class="form">
                     <div class="form-group">
@@ -42,12 +43,29 @@
         <section id="dashboard-section" class="section hidden">
             <header class="header">
                 <div class="header-content">
-                    <h1>Arriba Dashboard</h1>
-                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                    <div>
+                        <h1>Arriba Dashboard</h1>
+                        <p class="version-info" id="dashboard-version">Loading version...</p>
+                    </div>
+                    <div class="header-actions">
+                        <button id="toggle-logs-btn" class="btn btn-secondary">Show Logs</button>
+                        <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                    </div>
                 </div>
             </header>
 
             <main class="main-content">
+                <!-- Logs Panel -->
+                <div id="logs-panel" class="logs-panel hidden">
+                    <div class="logs-header">
+                        <h3>Application Logs</h3>
+                        <button id="refresh-logs-btn" class="btn btn-small">Refresh</button>
+                    </div>
+                    <div id="logs-container" class="logs-container">
+                        <p class="logs-loading">Loading logs...</p>
+                    </div>
+                </div>
+
                 <!-- Loading State -->
                 <div id="loading-state" class="loading-container">
                     <div class="spinner"></div>

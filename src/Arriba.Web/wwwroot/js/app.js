@@ -12,6 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('error-message');
     const sitesContainer = document.getElementById('sites-container');
     const sitesList = document.getElementById('sites-list');
+    const loginVersion = document.getElementById('login-version');
+    const dashboardVersion = document.getElementById('dashboard-version');
+    const toggleLogsBtn = document.getElementById('toggle-logs-btn');
+    const logsPanel = document.getElementById('logs-panel');
+    const logsContainer = document.getElementById('logs-container');
+    const refreshLogsBtn = document.getElementById('refresh-logs-btn');
 
     // Default site ID from the portal URL
     const DEFAULT_SITE_ID = 'f7a52cf3-a421-4438-b2a3-be6ca7551265';
@@ -20,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
 
     function init() {
+        // Load version info
+        loadVersion();
+
         // Check if already authenticated
         if (Auth.isAuthenticated()) {
             showDashboard();
@@ -35,12 +44,73 @@ document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners();
     }
 
+    async function loadVersion() {
+        try {
+            const response = await fetch('/api/app/version');
+            const data = await response.json();
+            const versionText = `v${data.version} (${data.environment})`;
+            if (loginVersion) loginVersion.textContent = versionText;
+            if (dashboardVersion) dashboardVersion.textContent = versionText;
+        } catch (error) {
+            console.error('[App] Failed to load version:', error);
+            if (loginVersion) loginVersion.textContent = 'Version: Unknown';
+            if (dashboardVersion) dashboardVersion.textContent = 'Version: Unknown';
+        }
+    }
+
+    async function loadLogs() {
+        try {
+            const response = await fetch('/api/app/logs?count=100');
+            const logs = await response.json();
+            
+            if (logs.length === 0) {
+                logsContainer.innerHTML = '<p class="logs-loading">No logs available</p>';
+                return;
+            }
+
+            logsContainer.innerHTML = logs.map(log => {
+                const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                const levelClass = `log-level-${log.level.toLowerCase()}`;
+                return `
+                    <div class="log-entry">
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-level ${levelClass}">[${log.level}]</span>
+                        <span class="log-message">${escapeHtml(log.message)}</span>
+                        ${log.exception ? `<div class="log-exception">${escapeHtml(log.exception)}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            // Scroll to bottom
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        } catch (error) {
+            console.error('[App] Failed to load logs:', error);
+            logsContainer.innerHTML = '<p class="logs-loading">Failed to load logs</p>';
+        }
+    }
+
     function setupEventListeners() {
         // Login form
         loginForm.addEventListener('submit', handleLogin);
 
         // Logout button
         logoutBtn.addEventListener('click', handleLogout);
+
+        // Logs toggle button
+        toggleLogsBtn.addEventListener('click', () => {
+            const isHidden = logsPanel.classList.contains('hidden');
+            if (isHidden) {
+                logsPanel.classList.remove('hidden');
+                toggleLogsBtn.textContent = 'Hide Logs';
+                loadLogs();
+            } else {
+                logsPanel.classList.add('hidden');
+                toggleLogsBtn.textContent = 'Show Logs';
+            }
+        });
+
+        // Refresh logs button
+        refreshLogsBtn.addEventListener('click', loadLogs);
     }
 
     async function handleLogin(e) {

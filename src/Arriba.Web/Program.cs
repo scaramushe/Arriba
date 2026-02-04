@@ -1,5 +1,6 @@
 using Arriba.Core.Services;
 using Arriba.Web.Middleware;
+using Arriba.Web.Services;
 
 // Cache control constants
 const int OneYearInSeconds = 31536000; // 1 year
@@ -25,6 +26,13 @@ builder.Services.AddHttpClient<IArubaApiClient, ArubaApiClient>(client =>
 // Register services
 builder.Services.AddScoped<IArubaService, ArubaService>();
 builder.Services.AddSingleton<ITokenStorage, InMemoryTokenStorage>();
+
+// Register log collector
+var logCollector = new InMemoryLogCollector();
+builder.Services.AddSingleton<ILogCollector>(logCollector);
+
+// Add custom logging provider to collect logs
+builder.Logging.AddProvider(new LogCollectorProvider(logCollector));
 
 // Configure CORS for frontend
 builder.Services.AddCors(options =>
