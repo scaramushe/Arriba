@@ -22,7 +22,6 @@ var useMockClient = builder.Configuration.GetValue<bool>("Aruba:UseMockClient");
 if (useMockClient)
 {
     builder.Services.AddScoped<IArubaApiClient, MockArubaApiClient>();
-    builder.Services.AddLogging();
 }
 else
 {

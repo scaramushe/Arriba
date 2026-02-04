@@ -22,12 +22,12 @@ public class MockArubaApiClient : IArubaApiClient
         _logger = logger;
     }
 
-    public Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Mock login attempt for: {Email}", request.Email);
 
         // Simulate a small delay to mimic real API
-        Task.Delay(500, cancellationToken).Wait(cancellationToken);
+        await Task.Delay(500, cancellationToken);
 
         // Accept fake credentials
         if (request.Email == FakeEmail && request.Password == FakePassword)
@@ -41,19 +41,19 @@ public class MockArubaApiClient : IArubaApiClient
                 TokenType: "Bearer"
             );
 
-            return Task.FromResult(ApiResponse<LoginResponse>.Ok(response));
+            return ApiResponse<LoginResponse>.Ok(response);
         }
 
         _logger.LogWarning("Mock login failed - invalid credentials");
-        return Task.FromResult(ApiResponse<LoginResponse>.Fail("Invalid credentials", 401));
+        return ApiResponse<LoginResponse>.Fail("Invalid credentials", 401);
     }
 
-    public Task<ApiResponse<LoginResponse>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<LoginResponse>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Mock token refresh");
 
         // Simulate a small delay
-        Task.Delay(300, cancellationToken).Wait(cancellationToken);
+        await Task.Delay(300, cancellationToken);
 
         if (refreshToken == FakeRefreshToken)
         {
@@ -66,11 +66,11 @@ public class MockArubaApiClient : IArubaApiClient
                 TokenType: "Bearer"
             );
 
-            return Task.FromResult(ApiResponse<LoginResponse>.Ok(response));
+            return ApiResponse<LoginResponse>.Ok(response);
         }
 
         _logger.LogWarning("Mock token refresh failed");
-        return Task.FromResult(ApiResponse<LoginResponse>.Fail("Invalid refresh token", 401));
+        return ApiResponse<LoginResponse>.Fail("Invalid refresh token", 401);
     }
 
     public Task<ApiResponse<UserInfo>> GetUserInfoAsync(string accessToken, CancellationToken cancellationToken = default)
@@ -241,17 +241,17 @@ public class MockArubaApiClient : IArubaApiClient
         return Task.FromResult(ApiResponse<List<Radio>>.Ok(radios));
     }
 
-    public Task<ApiResponse<RadioControlResponse>> ControlRadioAsync(string accessToken, string siteId, RadioControlRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<RadioControlResponse>> ControlRadioAsync(string accessToken, string siteId, RadioControlRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Mock control radio: {RadioId}, Enabled: {Enabled}", request.RadioId, request.Enabled);
         
         if (!accessToken.StartsWith(FakeAccessToken))
         {
-            return Task.FromResult(ApiResponse<RadioControlResponse>.Fail("Invalid token", 401));
+            return ApiResponse<RadioControlResponse>.Fail("Invalid token", 401);
         }
 
         // Simulate delay for radio control
-        Task.Delay(1000, cancellationToken).Wait(cancellationToken);
+        await Task.Delay(1000, cancellationToken);
 
         var updatedRadio = new Radio(
             Id: request.RadioId,
@@ -269,6 +269,6 @@ public class MockArubaApiClient : IArubaApiClient
             Radio: updatedRadio
         );
 
-        return Task.FromResult(ApiResponse<RadioControlResponse>.Ok(response));
+        return ApiResponse<RadioControlResponse>.Ok(response);
     }
 }
