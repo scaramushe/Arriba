@@ -1,4 +1,5 @@
 using Arriba.Core.Services;
+using Arriba.Web.Middleware;
 
 // Cache control constants
 const int OneYearInSeconds = 31536000; // 1 year
@@ -45,6 +46,8 @@ builder.Services.AddResponseCaching();
 var app = builder.Build();
 
 // Configure middleware
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

@@ -1,5 +1,6 @@
 using Arriba.Core.Models;
 using Arriba.Core.Services;
+using Arriba.Web.Helpers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Arriba.Web.Controllers;
@@ -20,7 +21,7 @@ public class SitesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetSites(CancellationToken cancellationToken)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("GetSites: Unauthorized - No access token provided");
@@ -43,7 +44,7 @@ public class SitesController : ControllerBase
     [HttpGet("{siteId}")]
     public async Task<IActionResult> GetSite(string siteId, [FromQuery] bool includeDevices = true, CancellationToken cancellationToken = default)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("GetSite: Unauthorized - No access token provided for site {SiteId}", siteId);
@@ -72,7 +73,7 @@ public class SitesController : ControllerBase
     [HttpGet("{siteId}/devices")]
     public async Task<IActionResult> GetDevices(string siteId, CancellationToken cancellationToken)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("GetDevices: Unauthorized - No access token provided for site {SiteId}", siteId);
@@ -95,7 +96,7 @@ public class SitesController : ControllerBase
     [HttpGet("{siteId}/devices/{deviceId}")]
     public async Task<IActionResult> GetDevice(string siteId, string deviceId, CancellationToken cancellationToken)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("GetDevice: Unauthorized - No access token provided for device {DeviceId} on site {SiteId}", deviceId, siteId);
@@ -113,29 +114,5 @@ public class SitesController : ControllerBase
 
         _logger.LogInformation("Successfully fetched device {DeviceId} with {RadioCount} radios", deviceId, result.Data.Radios?.Count ?? 0);
         return Ok(result.Data);
-    }
-
-    private AuthTokens? GetTokensFromHeader()
-    {
-        var authHeader = Request.Headers.Authorization.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var accessToken = authHeader["Bearer ".Length..].Trim();
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            return null;
-        }
-
-        return new AuthTokens
-        {
-            AccessToken = accessToken,
-            RefreshToken = string.Empty,
-            // Token expiry should be managed by the client or extracted from the JWT
-            // Setting a far future date since we don't have the actual expiry here
-            ExpiresAt = DateTime.UtcNow.AddYears(1)
-        };
     }
 }

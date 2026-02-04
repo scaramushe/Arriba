@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Arriba.Core.Models;
 using Arriba.Core.Services;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 
@@ -12,13 +13,15 @@ public class ArubaApiClientTests
 {
     private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock;
     private readonly HttpClient _httpClient;
+    private readonly Mock<ILogger<ArubaApiClient>> _loggerMock;
     private readonly ArubaApiClient _apiClient;
 
     public ArubaApiClientTests()
     {
         _httpMessageHandlerMock = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_httpMessageHandlerMock.Object);
-        _apiClient = new ArubaApiClient(_httpClient);
+        _loggerMock = new Mock<ILogger<ArubaApiClient>>();
+        _apiClient = new ArubaApiClient(_httpClient, _loggerMock.Object);
     }
 
     [Fact]

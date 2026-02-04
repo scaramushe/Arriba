@@ -1,5 +1,6 @@
 using Arriba.Core.Models;
 using Arriba.Core.Services;
+using Arriba.Web.Helpers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Arriba.Web.Controllers;
@@ -20,7 +21,7 @@ public class RadiosController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetRadios(string siteId, string deviceId, CancellationToken cancellationToken)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("GetRadios: Unauthorized - No access token provided for device {DeviceId} on site {SiteId}", deviceId, siteId);
@@ -43,7 +44,7 @@ public class RadiosController : ControllerBase
     [HttpPost("{radioId}/toggle")]
     public async Task<IActionResult> ToggleRadio(string siteId, string deviceId, string radioId, [FromBody] ToggleRadioRequest request, CancellationToken cancellationToken)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("ToggleRadio: Unauthorized - No access token provided");
@@ -67,7 +68,7 @@ public class RadiosController : ControllerBase
     [HttpPatch("{radioId}")]
     public async Task<IActionResult> UpdateRadio(string siteId, string deviceId, string radioId, [FromBody] UpdateRadioRequest request, CancellationToken cancellationToken)
     {
-        var tokens = GetTokensFromHeader();
+        var tokens = AuthTokenHelper.GetTokensFromHeader(Request);
         if (tokens == null)
         {
             _logger.LogWarning("UpdateRadio: Unauthorized - No access token provided");
@@ -88,30 +89,6 @@ public class RadiosController : ControllerBase
 
         _logger.LogInformation("Successfully updated radio {RadioId}", radioId);
         return Ok(result.Data);
-    }
-
-    private AuthTokens? GetTokensFromHeader()
-    {
-        var authHeader = Request.Headers.Authorization.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var accessToken = authHeader["Bearer ".Length..].Trim();
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            return null;
-        }
-
-        return new AuthTokens
-        {
-            AccessToken = accessToken,
-            RefreshToken = string.Empty,
-            // Token expiry should be managed by the client or extracted from the JWT
-            // Setting a far future date since we don't have the actual expiry here
-            ExpiresAt = DateTime.UtcNow.AddYears(1)
-        };
     }
 }
 
