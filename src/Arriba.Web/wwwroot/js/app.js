@@ -266,8 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
         card.querySelector('.device-serial').textContent = device.serialNumber;
 
         const statusEl = card.querySelector('.device-status');
-        statusEl.textContent = device.status;
-        statusEl.className = `device-status ${device.status.toLowerCase()}`;
+        const statusMap = { 0: 'Online', 1: 'Offline', 2: 'Updating', 3: 'Unknown' };
+        const statusText = statusMap[device.status] || device.status;
+        statusEl.textContent = statusText;
+        statusEl.className = `device-status ${String(statusText).toLowerCase()}`;
 
         const radiosList = card.querySelector('.radios-list');
 
@@ -328,9 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateRadioStatus(element, radio) {
-        const status = radio.enabled ? radio.status : 'Disabled';
-        element.textContent = status;
-        element.className = `radio-status ${status.toLowerCase()}`;
+        const statusMap = { 0: 'Active', 1: 'Inactive', 2: 'Disabled', 3: 'Unknown' };
+        const statusText = radio.enabled ? (statusMap[radio.status] || radio.status) : 'Disabled';
+        element.textContent = statusText;
+        element.className = `radio-status ${String(statusText).toLowerCase()}`;
     }
 
     // Expose loadSites globally for retry button

@@ -17,11 +17,21 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Configure HTTP client for Aruba API
-builder.Services.AddHttpClient<IArubaApiClient, ArubaApiClient>(client =>
+// Use mock client in development if configured
+var useMockClient = builder.Configuration.GetValue<bool>("Aruba:UseMockClient");
+
+if (useMockClient)
 {
-    client.Timeout = TimeSpan.FromSeconds(30);
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
+    builder.Services.AddScoped<IArubaApiClient, MockArubaApiClient>();
+}
+else
+{
+    builder.Services.AddHttpClient<IArubaApiClient, ArubaApiClient>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+    });
+}
 
 // Register services
 builder.Services.AddScoped<IArubaService, ArubaService>();
