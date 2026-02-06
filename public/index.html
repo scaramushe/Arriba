@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arriba - Aruba Radio Control</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: #ff6b00;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 2rem; }
+        .version {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .form-group input:focus { outline: none; border-color: #ff6b00; }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: #ff6b00;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn:hover { background: #e55d00; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .error { color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 6px; margin-top: 10px; }
+        .hidden { display: none !important; }
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .device-card {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #eee;
+        }
+        .device-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .device-name { font-weight: 600; font-size: 1.1rem; }
+        .device-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .device-status.online { background: #d4edda; color: #28a745; }
+        .device-status.offline { background: #f8d7da; color: #dc3545; }
+        .radio-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin: 5px 0;
+        }
+        .radio-info { display: flex; gap: 15px; font-size: 0.9rem; }
+        .radio-band { font-weight: 600; color: #0066cc; }
+        .toggle { position: relative; width: 50px; height: 26px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #ccc;
+            border-radius: 26px;
+            transition: 0.3s;
+        }
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle input:checked + .toggle-slider { background: #28a745; }
+        .toggle input:checked + .toggle-slider:before { transform: translateX(24px); }
+        .toggle input:disabled + .toggle-slider { opacity: 0.5; cursor: not-allowed; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #ddd;
+            border-top-color: #ff6b00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .debug-panel {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .debug-panel h4 { color: #fff; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Arriba</h1>
+        <p>Aruba Instant On Radio Control</p>
+        <div class="version">Build: 2026.02.04.1</div>
+        <button id="logout-btn" class="logout-btn hidden">Logout</button>
+    </div>
+
+    <div class="container">
+        <!-- Login Section -->
+        <div id="login-section" class="card">
+            <h2 style="margin-bottom: 20px;">Sign In</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="Password">
+                </div>
+                <button type="submit" class="btn" id="login-btn">Sign In</button>
+                <div id="login-error" class="error hidden"></div>
+            </form>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="hidden">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading devices...</p>
+            </div>
+            <div id="devices-list"></div>
+            <div id="dashboard-error" class="error hidden"></div>
+        </div>
+
+        <!-- Debug Panel -->
+        <div class="debug-panel">
+            <h4>Debug Log</h4>
+            <div id="debug-log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Build info
+        const BUILD_VERSION = '2026.02.04.1';
+        const BUILD_DATE = '2026-02-04T16:30:00Z';
+
+        // API base (relative to current host for Vercel)
+        const API_BASE = '/api/proxy';
+        const ARUBA_AUTH_URL = 'https://sso.arubainstanton.com/aio/api/v1';
+        const ARUBA_API_URL = 'https://nb.portal.arubainstanton.com/api';
+
+        // Debug logger
+        const debugLog = document.getElementById('debug-log');
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#f00' : type === 'success' ? '#0f0' : '#0ff';
+            debugLog.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(`[${type}] ${msg}`);
+        }
+
+        // Storage
+        const storage = {
+            get: () => JSON.parse(localStorage.getItem('arriba_auth') || 'null'),
+            set: (data) => localStorage.setItem('arriba_auth', JSON.stringify(data)),
+            clear: () => localStorage.removeItem('arriba_auth')
+        };
+
+        // API call through proxy
+        async function apiCall(url, options = {}) {
+            const proxyUrl = `${API_BASE}?target=${encodeURIComponent(url)}`;
+            log(`API: ${options.method || 'GET'} ${url}`);
+
+            const response = await fetch(proxyUrl, {
+                method: options.method || 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                body: options.body ? JSON.stringify(options.body) : undefined
+            });
+
+            const text = await response.text();
+            log(`Response: ${response.status} - ${text.substring(0, 100)}...`);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                data = { raw: text };
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error_description || data.error || `HTTP ${response.status}`);
+            }
+
+            return data;
+        }
+
+        // Auth
+        async function login(email, password) {
+            log('Attempting login...');
+            const data = await apiCall(`${ARUBA_AUTH_URL}/mfa/validate/full`, {
+                method: 'POST',
+                body: { username: email, password: password }
+            });
+
+            if (!data.access_token) {
+                throw new Error('No access token in response');
+            }
+
+            log('Login successful!', 'success');
+            storage.set({
+                accessToken: data.access_token,
+                refreshToken: data.refresh_token,
+                expiresAt: Date.now() + (data.expires_in * 1000)
+            });
+
+            return data;
+        }
+
+        // Load sites and devices
+        async function loadDevices() {
+            const auth = storage.get();
+            if (!auth?.accessToken) {
+                throw new Error('Not authenticated');
+            }
+
+            log('Loading sites...');
+            const sites = await apiCall(`${ARUBA_API_URL}/sites`, {
+                headers: { Authorization: `Bearer ${auth.accessToken}` }
+            });
+
+            log(`Found ${sites.elements?.length || 0} sites`, 'success');
+
+            const allDevices = [];
+            for (const site of (sites.elements || [])) {
+                log(`Loading devices for site: ${site.name}`);
+                const devices = await apiCall(`${ARUBA_API_URL}/sites/${site.id}/devices`, {
+                    headers: { Authorization: `Bearer ${auth.accessToken}` }
+                });
+
+                for (const device of (devices.elements || [])) {
+                    log(`Loading radios for device: ${device.name}`);
+                    const radios = await apiCall(
+                        `${ARUBA_API_URL}/sites/${site.id}/devices/${device.id}/radios`,
+                        { headers: { Authorization: `Bearer ${auth.accessToken}` } }
+                    );
+                    allDevices.push({ ...device, siteId: site.id, radios: radios.elements || [] });
+                }
+            }
+
+            return allDevices;
+        }
+
+        // Toggle radio
+        async function toggleRadio(siteId, deviceId, radioId, enabled) {
+            const auth = storage.get();
+            log(`Toggling radio ${radioId} to ${enabled}`);
+
+            await apiCall(`${ARUBA_API_URL}/sites/${siteId}/devices/${deviceId}/radios/${radioId}`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${auth.accessToken}` },
+                body: { enabled }
+            });
+
+            log('Radio toggled!', 'success');
+        }
+
+        // UI
+        const loginSection = document.getElementById('login-section');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loading = document.getElementById('loading');
+        const devicesList = document.getElementById('devices-list');
+        const dashboardError = document.getElementById('dashboard-error');
+
+        function showLogin() {
+            loginSection.classList.remove('hidden');
+            dashboardSection.classList.add('hidden');
+            logoutBtn.classList.add('hidden');
+        }
+
+        function showDashboard() {
+            loginSection.classList.add('hidden');
+            dashboardSection.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+        }
+
+        function renderDevices(devices) {
+            loading.classList.add('hidden');
+            devicesList.innerHTML = devices.map(device => `
+                <div class="device-card">
+                    <div class="device-header">
+                        <div>
+                            <div class="device-name">${device.name || 'Access Point'}</div>
+                            <div style="color:#666;font-size:0.8rem">${device.model || ''} | ${device.macAddress || device.id}</div>
+                        </div>
+                        <span class="device-status ${device.status === 'Up' ? 'online' : 'offline'}">${device.status || 'Unknown'}</span>
+                    </div>
+                    <div class="radios">
+                        ${(device.radios || []).map(radio => `
+                            <div class="radio-row">
+                                <div class="radio-info">
+                                    <span class="radio-band">${radio.radioBand || radio.band || '?'}</span>
+                                    <span>CH ${radio.channel || '?'}</span>
+                                    <span>${radio.txPower || radio.transmitPower || '?'} dBm</span>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox"
+                                        ${radio.enabled !== false ? 'checked' : ''}
+                                        data-site="${device.siteId}"
+                                        data-device="${device.id}"
+                                        data-radio="${radio.id}">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            // Add toggle handlers
+            devicesList.querySelectorAll('input[type="checkbox"]').forEach(toggle => {
+                toggle.addEventListener('change', async (e) => {
+                    const { site, device, radio } = e.target.dataset;
+                    e.target.disabled = true;
+                    try {
+                        await toggleRadio(site, device, radio, e.target.checked);
+                    } catch (err) {
+                        log(`Toggle failed: ${err.message}`, 'error');
+                        e.target.checked = !e.target.checked;
+                    } finally {
+                        e.target.disabled = false;
+                    }
+                });
+            });
+        }
+
+        // Event handlers
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginBtn.disabled = true;
+            loginError.classList.add('hidden');
+
+            try {
+                await login(
+                    document.getElementById('email').value,
+                    document.getElementById('password').value
+                );
+                showDashboard();
+                const devices = await loadDevices();
+                renderDevices(devices);
+            } catch (err) {
+                log(`Login error: ${err.message}`, 'error');
+                loginError.textContent = err.message;
+                loginError.classList.remove('hidden');
+            } finally {
+                loginBtn.disabled = false;
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            storage.clear();
+            showLogin();
+            devicesList.innerHTML = '';
+            log('Logged out');
+        });
+
+        // Init
+        log(`Arriba v${BUILD_VERSION} initialized`);
+        log(`Build date: ${BUILD_DATE}`);
+
+        if (storage.get()?.accessToken) {
+            log('Found saved session, loading dashboard...');
+            showDashboard();
+            loadDevices()
+                .then(renderDevices)
+                .catch(err => {
+                    log(`Load error: ${err.message}`, 'error');
+                    dashboardError.textContent = err.message;
+                    dashboardError.classList.remove('hidden');
+                    loading.classList.add('hidden');
+                });
+        } else {
+            showLogin();
+        }
+    </script>
+</body>
+</html>
